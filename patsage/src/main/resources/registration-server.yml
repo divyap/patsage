@@ -1,0 +1,32 @@
+# Configure this Discovery Server
+eureka:
+  instance:
+    hostname: localhost
+  client:  # Not a client, don't register with yourself
+    registerWithEureka: false
+    fetchRegistry: false
+
+server:
+  port: 1111   # HTTP (Tomcat) port
+  waitTimeInMsWhenSyncEmpty: 0
+  
+# Spring properties
+# DataSource settings: set here your own configurations for the database 
+# connection. In this example we have "patsage" as database name and 
+# "root" as username.
+spring:
+  thymeleaf:
+    enabled: false     # Disable Thymeleaf 
+  datasource:
+    username: root
+    password: admin
+    url: jdbc:mysql://localhost:3306/patsage?autoReconnect=true&useSSL=false
+    
+ # Logging settings
+logging:
+  level:
+    root: WARN
+    org:
+      springframework:
+         web: DEBUG
+      hibernate: ERROR

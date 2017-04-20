@@ -1,0 +1,27 @@
+# Spring properties
+spring:
+  application:
+     name: usptoweb-service
+  datasource:
+    username: root
+    password: admin
+    url: jdbc:mysql://localhost:3306/patsage?autoReconnect=true&useSSL=false
+
+# Discovery Server Access
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:1111/eureka/
+
+# HTTP Server
+server:
+  port: 6666   # HTTP (Tomcat) port
+  
+# Logging settings
+logging:
+  level:
+    root: WARN
+    org:
+      springframework:
+         web: DEBUG
+      hibernate: ERROR

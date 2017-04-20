@@ -1,0 +1,39 @@
+# Spring properties
+spring:
+  application:
+     name: usptoapp-service
+  datasource:
+    username: root
+    password: admin
+    url: jdbc:mysql://localhost:3306/patsage?autoReconnect=true&useSSL=false
+  freemarker:
+    enabled: false           # Ignore Eureka dashboard FreeMarker templates
+  thymeleaf:
+    cache: false             # Allow Thymeleaf templates to be reloaded at runtime
+    prefix: classpath:/usptoapp/templates/    # Trailing / mandatory
+                             # Template location for this application only
+
+# Map the error path to error template (for Thymeleaf)
+error:
+  path: /error
+   
+# Discovery Server Access
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:1111/eureka/
+  instance:
+    leaseRenewalIntervalInSeconds: 5   # DO NOT DO THIS IN PRODUCTION
+
+# HTTP Server
+server:
+  port: 5555   # HTTP (Tomcat) port
+    
+# Logging settings
+logging:
+  level:
+    root: WARN
+    org:
+      springframework:
+         web: DEBUG
+      hibernate: ERROR
