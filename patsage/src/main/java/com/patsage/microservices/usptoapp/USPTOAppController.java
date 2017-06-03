@@ -44,6 +44,7 @@ public class USPTOAppController {
 	private String cryocorurl;
 	private String assigneeurl;
 	private String countryurl;
+	private String appdate_keyurl;
 	
 	/*
 	 * Method to read properties file
@@ -62,6 +63,8 @@ public class USPTOAppController {
 			this.cryocorurl = (String) props.getProperty("uspto.cryocor.searchurl");
 			this.assigneeurl = (String) props.getProperty("uspto.assignee.searchurl");
 			this.countryurl = (String) props.getProperty("uspto.country.searchurl");
+			this.appdate_keyurl = (String) props.getProperty("uspto.appdate.url");
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -160,7 +163,7 @@ public class USPTOAppController {
 		uriParams.put("per_page", per_page);
 		String urlparam = assigneeurl + "\""+ assignee + "\"" + countryurl; 
 		
-		System.out.println("api url   =====>" + apiURLMain + assigneeurl);
+		System.out.println("api url   =====>" + apiURLMain + urlparam);
 		RestTemplate restTemplate = restTemplate();
 		try {
 			//patent = restTemplate.getForObject("http://patentsview-service/query?q={urlparam}",
@@ -213,9 +216,79 @@ public class USPTOAppController {
 	}
 	
 	/*
-	 * 
-	 * method to parse uspto patent and fetch claims text.
+	 * API call for Google Search and USPTO Search with Link Numbers, Keywords
+	 * url for search by keywords:
+	 * http://localhost:5555/rest/usptoapp/bykeyword/keyword1+keyword2+keyword3?num=25
 	 */
+
+	@RequestMapping(value="/bykeyword/{keywords}",method = RequestMethod.GET)
+	@ResponseBody
+	public USPTOPatentJSON getPatentsByKeywords(@PathVariable("keywords") String keywords,
+												@RequestParam(value = "num", required = true) String num) {
+		System.out.println("<============= inside USPTOAppController: getPatentsByKeywords() invoked:========> "
+																						+ keywords + " num =>" +  num);
+		USPTOPatentJSON patents = null;
+		String page = "1";
+		String per_page = num;
+		keywords = keywords.replace("+", " ");
+		Map<String, String> uriParams = new HashMap<String, String>();
+		uriParams.put("keywords", keywords);
+		uriParams.put("page", page);
+		uriParams.put("per_page", per_page);
+		String urlparam = appdate_keyurl + "\""+ keywords + "\"}},{\"_text_any\":{\"patent_abstract\":"
+																				+ "\""+ keywords + "\"}}]}]}";
+		
+		RestTemplate restTemplate = restTemplate();
+		try {
+			//patent = restTemplate.getForObject("http://patentsview-service/query?q={urlparam}",
+			//											USPTOPatentJSON.class, urlparam);
+			while (1==1){
+				System.out.println("Page=========>" + page);
+				String pageInfo = "{\"page\":" + page + ",\"per_page\":" + per_page + "}";
+				patents = (USPTOPatentJSON) restTemplate.getForObject("http://patentsview.org/api/patents/query?q={urlparam}&f="
+																+ apiUrlFields + "&o={pageInfo}", USPTOPatentJSON.class, urlparam, pageInfo);
+				Patent[] patentArray = patents.getPatents();
+				int totalPatCount = patents.getCount();
+				System.out.println("count of patents ==>" + totalPatCount );
+				if(patentArray == null) {
+					System.out.println("no more patents on the page ==>" + page);
+					break;
+				} else {
+					System.out.println("count of patents in array ==>" + patentArray.length);
+					for(int i=0; i< patentArray.length; i++) {
+						Patent patent = patentArray[i];
+						System.out.println("patent number ==>" + patent.getPatent_number());
+						System.out.println("patent title ==>" + patent.getPatent_title());
+						System.out.println("patent assignee ==>" + patent.getAssignees()[0].getAssignee_organization());
+						System.out.println("patent inventors ==>" + patent.getInventors()[0].getInventor_first_name());
+						System.out.println("patent app_date ==>" + patent.getApplications()[0].getApp_date());
+						System.out.println("patent ipc date ==>" + patent.getIPCs());
+						String usptoURL = usptoPatentHTMLUrl + patent.getPatent_number() + ".PN.&OS=PN/"+ patent.getPatent_number() + "&RS=PN/" 
+												+ patent.getPatent_number();
+						System.out.println("patent URL ==>" + usptoURL);
+						USPTOPatent dbPat = new USPTOPatent(patent, 3, usptoURL);
+						patentDao.save(dbPat);
+						dbPat = null;
+					}
+					page = Integer.toString((Integer.parseInt(page) + 1));
+					if(totalPatCount <= Integer.parseInt(per_page)){
+						System.out.println("total count of patents were  less than per_page limit ==>" + per_page);
+						break;
+					} 
+				} // end if block
+				continue;
+			}// end while loop
+		}
+	    catch (Exception ex) {
+	    	ex.printStackTrace();
+	    	return null;
+	    }
+		if (patents == null)
+			return null;
+		else
+			return patents;
+	}
+	
 	
 	public static void main(String[] args) {
        

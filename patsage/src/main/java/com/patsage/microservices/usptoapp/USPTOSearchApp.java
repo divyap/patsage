@@ -41,7 +41,7 @@ public class USPTOSearchApp {
   		try {
   			// Fetch all searchkeywords rows
 			sql = "Select searchId, userId, keyword, linknum, moduleId, assignee,"
-  	    		   	+ " country, cpc, gte_grantdate where active = 1 and sourceId = 2";
+  	    		   	+ " country, cpc, gte_grantdate from patsage.ps_searchkeyword where active = 1 and sourceId = 2";
   			logger.debug(sql);
   	  		// create the mysql insert preparedstatement
   	    	preparedStmt = conn.prepareStatement(sql);
@@ -111,16 +111,21 @@ public class USPTOSearchApp {
 				Map search = searchList.get(i);
 				logger.debug("Search Keyword is ==>" + search.get("keyword"));
 				//call uspto api call
-				searchbyUSPTOAPI(search);
+				buildUSPTOSearchUrl(search);
 			}
 		}
 	}
 	
-	public void searchbyUSPTOAPI(Map key) {
+	/*
+	 * Call this method with Search Map to build USPTO Search Url 
+	 */
+	
+	public String buildUSPTOSearchUrl(Map key) {
 		logger.debug("--------inside searchbyUSPTOAPI()-------->");
+		// uspto api query
+		String apiURL = "http://www.patentsview.org/api/patents/query?q=";
+
 		if(key != null) {
-			// uspto api query
-			String apiURL = "http://www.patentsview.org/api/patents/query?q=";
 			//Get search keywords 
 			int searchId = (int) key.get("searchId");
 	    	logger.debug("search ID ==>" + searchId);
@@ -196,9 +201,12 @@ public class USPTOSearchApp {
 		logger.debug("uspto url is ===>" + apiURL);
 		} else {
 			logger.error("search object is null....");
-		}
-		    
+			return null;
+		}	
+		return apiURL;
 	}
+	
+	
 	
 	/*
 	else if(inventors != null && keyword == null) {
