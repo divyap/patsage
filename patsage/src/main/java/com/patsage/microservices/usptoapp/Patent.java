@@ -193,4 +193,32 @@ public class Patent {
 		// TODO Auto-generated method stub
 
 	}
+	public String getApp_number() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	public String getApp_date() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	public String getInventor_first_name() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	public String getInventor_last_name() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	public String getAssignee_organization() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	public String getIpc_action_date() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	public String getApp_country() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

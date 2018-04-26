@@ -10,9 +10,18 @@ import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 import org.apache.lucene.analysis.standard.ClassicFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.patsage.MYSQLConnector;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -21,7 +30,10 @@ import java.util.*;
  */
 class KeywordsExtractor {
 
-    /**
+	// Define the logger object for this class
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	
+	/**
      * Get list of keywords with stem form, frequency rank, and terms dictionary
      *
      * @param fullText
@@ -151,8 +163,113 @@ class KeywordsExtractor {
         return sample;
     }
     
+    /*
+     *  Method to extract keywords from Patents in database
+     *  
+     */
+    public void extractPatentKeywords () {
+ 		MYSQLConnector mysql = new MYSQLConnector();
+  		Connection conn = mysql.getmysqlConn();
+  		PreparedStatement preparedStmt = null;
+  		String sql = null;
+		ResultSet rs = null;
+		try {
+  			// Fetch all searchkeywords rows
+			sql = "Select searchId, patentnumber, patenttitle, patentabstract, topclaims from patsage.ps_patent";
+  			logger.debug(sql);
+  	  		// create the mysql insert preparedstatement
+  	    	preparedStmt = conn.prepareStatement(sql);
+  	    	rs = preparedStmt.executeQuery();
+  	  		 if (rs != null ) {
+  	 	    	while(rs.next()) {
+  	 	    		// map to store keywords
+  	 	    		Map patentKeywords = new HashMap();
+  	 	    		int searchId = rs.getInt("searchId");
+  	 	    		logger.debug("search ID ==>" + searchId);
+  	 	    		String patentNum = rs.getString("patentnumber");
+  	 	    		StringBuffer str = new StringBuffer();
+  	 	    		str.append(rs.getString("patenttitle"));
+  	 	    		str.append(rs.getString("patentabstract"));
+  	 	    		str.append(rs.getString("topclaims"));
+  	 	    		
+	  	 	     	try {
+	  	 				List<Keyword> keyList = getKeywordsList(str.toString());
+	  	 				System.out.println("count of keywords =>" + keyList.size());
+	  	 				for(Keyword key : keyList) {
+	  	 					System.out.println("keyword =>" + key.getTerms().toString());
+	  	 					System.out.println("frequency =>" + key.getFrequency());
+	  	 					Connection insConn = mysql.getmysqlConn();
+	  	 					String insertsql = "insert into patsage.ps_patent_keyword (search_id, patentnumber, keyword, frequency)"
+		 							+ "VALUES (?, ?, ? ,? )";
+	  	  	 	    		PreparedStatement insertStmt = insConn.prepareStatement(insertsql);
+	  	 					try {
+		  	 					insertStmt.setInt (1, searchId);
+		  	 					insertStmt.setString (2, patentNum);
+		  	 					insertStmt.setString (3, key.getTerms().toString());
+		  	 					insertStmt.setInt (4, key.getFrequency());
+		  	 					
+		  	 					// execute the preparedstatement
+		  	 					insertStmt.execute();
+		  	 					
+		  	 				} catch (Exception ex) {
+		  	 					System.err.println("Got an exception!");
+		  	 					System.err.println(ex.getMessage());
+		  	 				} finally {
+		  	 					if (insertStmt != null) {
+		  	 						try {
+		  	 							insertStmt.close();
+		 	 			  		    } catch (SQLException sqlEx) { } // ignore
+		  	 			  		    insertStmt = null;
+		  	 			  		    
+		  	 					}
+		  	 			  		if (insConn != null) {
+		  	 			  		    try {
+		  	 			  		    	insConn.close();
+		  	 			  		    } catch (SQLException sqlEx) { } // ignore
+		  	 			  		        
+		  	 			  		    insConn = null;
+		  	 			  		}
+		  	 				}
+	  	 				} //end of for loop
+	  	 			} catch (IOException e) {
+	  	 				// TODO Auto-generated catch block
+	  	 				e.printStackTrace();
+	  	 			}
+  	 	    	} // end of while loop
+  	  		 }else {
+  	  			logger.debug("Result set from ps_patent is NULL...");
+  	  		 }
+  		} catch (SQLException ex){
+  		    // handle any errors
+  		    System.err.println("SQLException: " + ex.getMessage());
+  		    System.err.println("SQLState: " + ex.getSQLState());
+  		    System.err.println("VendorError: " + ex.getErrorCode());
+  		} finally {
+  		    if (rs != null) {
+  		        try {
+  		            rs.close();
+  		        } catch (SQLException sqlEx) { } // ignore
+  		        rs = null;
+  		    }
+  		    if (preparedStmt != null) {
+  		        try {
+  		        	preparedStmt.close();
+  		        } catch (SQLException sqlEx) { } // ignore
+  		      preparedStmt = null;
+  		    }
+  		    if (conn != null) {
+  		        try {
+  		            conn.close();
+  		        } catch (SQLException sqlEx) { } // ignore
+  		        conn = null;
+  		    }
+  		}
+
+    }
     
     public static void main(String args[]) {
+    	
+    	/*
     	String text = "Devices, systems and methods are disclosed for the ablation of tissue and treatment of cardiac arrhythmia. An ablation system includes an ablation catheter that has an array of ablation elements and a location element, an esophageal probe also including a location element, and an interface unit that provides energy to the ablation catheter. The distance between the location elements, determined by calculating means of the system, can be used by the system to set or modify one or more system parameters.";
     	
     	try {
@@ -166,5 +283,10 @@ class KeywordsExtractor {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		*/
+    	
+    	KeywordsExtractor keyExtract = new KeywordsExtractor();
+    	keyExtract.extractPatentKeywords();
+    	
     }
 }
