@@ -54,7 +54,7 @@ public class USPTOFullTextSearchParser {
 			props.load(resourceStream);
 			this.usptoBulkdataPath = (String) props.getProperty("uspto.bulkdata.path");
 			this.usptoPatentHTMLUrl = (String) props.getProperty("uspto.pat.url");
-			this.usptoGrantPageUrl = (String) props.getProperty("uspto.pat.apr3.search.url");
+			this.usptoGrantPageUrl = (String) props.getProperty("uspto.pat.apr4.search.url");
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -130,6 +130,25 @@ public class USPTOFullTextSearchParser {
 				Elements fileDate = tempRow.getElementsByTag("b");
 				System.out.println("Filing Date is =>" + fileDate.text());
 				patent.put("FilingDate", fileDate.text());
+			}else {
+				Element tbody5 = tableItems.get(4);	
+				Elements tableRows5 = tbody5.getElementsByTag("tr");
+				for(Element tempRow5 : tableRows5) {
+					String headerTxt5 = tempRow5.getElementsByTag("th").text();
+					if(headerTxt5 != null && headerTxt5.equals("Inventors:")) {
+						Elements inventors = tempRow5.getElementsByTag("b");
+						System.out.println("Inventors are =>" + inventors.text());
+						patent.put("Inventors", inventors.text());
+					}else if(headerTxt5 != null && headerTxt5.equals("Assignee:")) {
+						Elements assignee = tempRow5.getElementsByTag("b");
+						System.out.println("Assignee is =>" + assignee.text());
+						patent.put("Assignee", assignee.text());
+					}else if(headerTxt5 != null && headerTxt5.equals("Filed:")) {
+						Elements fileDate = tempRow5.getElementsByTag("b");
+						System.out.println("Filing Date is =>" + fileDate.text());
+						patent.put("FilingDate", fileDate.text());
+					}
+				}
 			}
 		}
 		
@@ -464,6 +483,64 @@ public class USPTOFullTextSearchParser {
 		return 1;
 	}
 	
+	
+	/*
+	 *  re-run parser to fill patents with missing assignees/filingdate/Inventors/grantdate
+	 */
+	public int parsePatentMissingInfo() {
+		System.out.println("<==============inside parsePatentMissingInfo()============>: ");
+		//select from search results
+		//instantiate MySQL connection
+    	MYSQLConnector mysql = new MYSQLConnector();
+    	Connection conn = mysql.getmysqlConn();
+    	PreparedStatement stmt = null;
+    	ResultSet rs = null;
+    	try {
+	   		String patsql = "select resultlink from patsage.ps_uspto_patent  where assignee is null and patentstatus = ? and created_at > ? ";
+	   		System.out.println("query :" + patsql);
+	   		stmt = conn.prepareStatement(patsql);
+	   	    stmt.setString(1, "Grant");
+	   	    stmt.setString(2, "2018-04-26");
+	   	    rs = stmt.executeQuery();
+	   	    System.out.println("total patent rows to be parsed ==> :" + rs.getFetchSize());
+	   	    while (rs.next()) {
+	   	    	String usptoURL = rs.getString("resultlink");
+	   	    	System.out.println("USPTO Link :" + usptoURL);
+	   	    	int result = parseAndStoreUSPTOPatent(usptoURL);
+	   	    	System.out.println("is patent extraction succeeded? :" + result);
+	   	    }
+    	}catch (SQLException  ex) {
+			ex.printStackTrace();
+    	    // handle any errors
+    	    System.err.println("SQLException: " + ex.getMessage());
+    	    System.err.println("SQLState: " + ((SQLException) ex).getSQLState());
+    	    System.err.println("VendorError: " + ((SQLException) ex).getErrorCode());
+    	    return 0;
+		} finally {
+    		if (stmt != null) {
+    			try {
+    				stmt.close();
+    			} catch (SQLException sqlEx) { return 0;} // ignore
+    			stmt = null;
+    		}
+    		if (rs != null) {
+    			try {
+    				rs.close();
+    		    } catch (SQLException sqlEx) {return 0; } // ignore
+    		        rs = null;
+    		}
+    		if (conn != null) {
+    			try {
+    				conn.close();
+    		    } catch (SQLException sqlEx) {return 0; } // ignore
+    		        conn = null;
+    		}
+    	}
+		
+		return 1;
+	}
+	
+	
 	/*
 	 * Master method to loop through uspto patent htmls and populate patent content
 	 */
@@ -488,11 +565,12 @@ public class USPTOFullTextSearchParser {
 		// TODO Auto-generated method stub
 		
 		USPTOFullTextSearchParser parser = new USPTOFullTextSearchParser();
-		String url = "http://patft.uspto.gov/netacgi/nph-Parser?Sect1=PTO2&Sect2=HITOFF&p=1&u=%2Fnetahtml%2FPTO%2Fsearch-bool.html&r=1&f=G&l=50&co1=AND&d=PTXT&s1=8758334.PN.&OS=PN/8758334&RS=PN/8758334";
-		String keyword = "Cryo AND Ablation AND Catheter";
+		String url = "http://patft.uspto.gov/netacgi/nph-Parser?Sect1=PTO2&Sect2=HITOFF&p=1&u=%2Fnetahtml%2FPTO%2Fsearch-bool.html&r=1&f=G&l=50&co1=AND&d=PTXT&s1=9,617,157.PN.&OS=PN/9,617,157&RS=PN/9,617,157";
+		String keyword = "Cryo AND Balloon AND Catheter";
 		//int result = parser.fullTextSearchUSPTOPatent(keyword);
-		int finalResult = parser.parseUSPTOSearchResults();
-		//int finalResult = parser.parseAndStoreUSPTOPatent(url);
+		//int finalResult = parser.parseUSPTOSearchResults();
+		int finalResult = parser.parseAndStoreUSPTOPatent(url);
+		//int result = parser.parsePatentMissingInfo();
 		//parser.USPTOPatentMaster(keyword);
 		
 	}
